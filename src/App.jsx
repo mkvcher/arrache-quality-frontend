@@ -2,6 +2,8 @@ import { Routes, Route, Navigate } from "react-router-dom"
 import { useAuth } from "./context/AuthContext"
 import LoginPage from "./pages/LoginPage"
 import AgentDashboard from "./pages/AgentDashboard"
+import ReparateurDashboard from "./pages/ReparateurDashboard"
+import LaboratoryDashboard from "./pages/LaboratoryDashboard"
 
 function ProtectedRoute({ children, allowedRole }) {
   const { user } = useAuth()
@@ -18,7 +20,7 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/reparateur" element={
         <ProtectedRoute allowedRole="REPARATEUR">
-          <div>Réparateur Dashboard — coming soon</div>
+          <ReparateurDashboard />
         </ProtectedRoute>
       } />
       <Route path="/agent" element={
@@ -28,9 +30,9 @@ export default function App() {
       } />
       <Route path="/laboratory" element={
         <ProtectedRoute allowedRole="LABORATORY">
-          <div>Laboratory Dashboard — coming soon</div>
+          <LaboratoryDashboard />
         </ProtectedRoute>
-      } />
+      } />    
       <Route path="*" element={<Navigate to={user ? "/agent" : "/login"} />} />
     </Routes>
   )
