@@ -22,6 +22,8 @@ export default function LoginPage() {
       if (role === "REPARATEUR") navigate("/reparateur")
       else if (role === "QM_AGENT") navigate("/agent")
       else if (role === "LABORATORY") navigate("/laboratory")
+      else if (role === "ADMIN") navigate("/admin")
+
     } catch {
       setError("Matricule ou mot de passe incorrect")
     } finally {

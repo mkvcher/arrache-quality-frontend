@@ -4,6 +4,7 @@ import LoginPage from "./pages/LoginPage"
 import AgentDashboard from "./pages/AgentDashboard"
 import ReparateurDashboard from "./pages/ReparateurDashboard"
 import LaboratoryDashboard from "./pages/LaboratoryDashboard"
+import AdminDashboard from "./pages/AdminDashboard"
 
 function ProtectedRoute({ children, allowedRole }) {
   const { user } = useAuth()
@@ -32,8 +33,21 @@ export default function App() {
         <ProtectedRoute allowedRole="LABORATORY">
           <LaboratoryDashboard />
         </ProtectedRoute>
-      } />    
-      <Route path="*" element={<Navigate to={user ? "/agent" : "/login"} />} />
+      } />
+      <Route path="/admin" element={
+        <ProtectedRoute allowedRole="ADMIN">
+          <AdminDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="*" element={
+        <Navigate to={
+          user ? (
+            user.role === "ADMIN" ? "/admin" :
+            user.role === "QM_AGENT" ? "/agent" :
+            user.role === "REPARATEUR" ? "/reparateur" : "/laboratory"
+          ) : "/login"
+        } />
+      } />
     </Routes>
   )
 }
