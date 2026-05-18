@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import api from "../services/api"
+import NotificationBell from "../components/NotificationBell"
  
 const inputStyle = {
   width: "100%",
@@ -406,6 +407,7 @@ export default function AdminDashboard() {
             fontWeight: 500, padding: "2px 10px", borderRadius: "20px"
           }}>ADMIN</span>
           <span style={{ color: "rgba(255,255,255,0.7)", fontSize: "14px" }}>{user?.fullName}</span>
+          <NotificationBell />
           <button onClick={handleLogout} style={{
             background: "rgba(255,255,255,0.15)", color: "white", border: "none",
             padding: "6px 14px", borderRadius: "6px", fontSize: "13px", cursor: "pointer"

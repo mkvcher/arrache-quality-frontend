@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import api from "../services/api"
+import NotificationBell from "../components/NotificationBell"
 
 // ─── Helpers ────────────────────────────────────────────
 const getCurrentQuarter = () => Math.floor(new Date().getMonth() / 3) + 1
@@ -271,6 +272,7 @@ export default function LaboratoryDashboard() {
           <span style={{ color: "rgba(255,255,255,0.7)", fontSize: "14px" }}>
             {user?.fullName}
           </span>
+          <NotificationBell />
           <button onClick={handleLogout} style={{
             background: "rgba(255,255,255,0.15)",
             color: "white",

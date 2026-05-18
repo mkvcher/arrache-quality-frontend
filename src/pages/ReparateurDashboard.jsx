@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import api from "../services/api"
+import NotificationBell from "../components/NotificationBell"
 
 const getCurrentQuarter = () => Math.floor(new Date().getMonth() / 3) + 1
 const getCurrentYear = () => new Date().getFullYear()
@@ -219,6 +220,7 @@ export default function ReparateurDashboard() {
           <span style={{ color: "rgba(255,255,255,0.7)", fontSize: "14px" }}>
             {user?.fullName}
           </span>
+          <NotificationBell />
           <button onClick={handleLogout} style={{
             background: "rgba(255,255,255,0.15)", color: "white", border: "none",
             padding: "6px 14px", borderRadius: "6px", fontSize: "13px", cursor: "pointer"

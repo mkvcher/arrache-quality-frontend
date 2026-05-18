@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import api from "../services/api"
+import NotificationBell from "../components/NotificationBell"
  
 // ─── Helpers ────────────────────────────────────────────
 const getCurrentQuarter = () => Math.floor(new Date().getMonth() / 3) + 1
@@ -232,21 +233,10 @@ export default function AgentDashboard() {
           Suivi des Arraches — LEONI
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          {notifications.length > 0 && (
-            <div style={{
-              background: "#dc2626",
-              color: "white",
-              borderRadius: "20px",
-              padding: "2px 10px",
-              fontSize: "12px",
-              fontWeight: 500
-            }}>
-              {notifications.length} notification{notifications.length > 1 ? "s" : ""}
-            </div>
-          )}
           <span style={{ color: "rgba(255,255,255,0.7)", fontSize: "14px" }}>
             {user?.fullName}
           </span>
+          <NotificationBell />
           <button onClick={handleLogout} style={{
             background: "rgba(255,255,255,0.15)",
             color: "white",
