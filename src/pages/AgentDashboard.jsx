@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import api from "../services/api"
-
+ 
 // ─── Helpers ────────────────────────────────────────────
 const getCurrentQuarter = () => Math.floor(new Date().getMonth() / 3) + 1
 const getCurrentYear = () => new Date().getFullYear()
@@ -11,30 +11,30 @@ const monthLabels = [
   "", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
   "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
 ]
-
+ 
 export default function AgentDashboard() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
-
-  // Overview state (existing)
+ 
+  // Overview state
   const [valises, setValises] = useState([])
   const [arraches, setArraches] = useState([])
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
-
-  // Contrôles tab state (new)
+ 
+  // Contrôles tab state
   const [activeTab, setActiveTab] = useState("overview")
   const [selectedValiseId, setSelectedValiseId] = useState(null)
   const [currentSheet, setCurrentSheet] = useState(null)
   const [sheetLoading, setSheetLoading] = useState(false)
-  const [monthlyResults, setMonthlyResults] = useState({}) // arracheId → { result, nokReasons }
+  const [monthlyResults, setMonthlyResults] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [submitMessage, setSubmitMessage] = useState(null)
-
+ 
   useEffect(() => {
     fetchData()
   }, [])
-
+ 
   const fetchData = async () => {
     try {
       const [valiseRes, arracheRes, notifRes] = await Promise.all([
@@ -51,36 +51,37 @@ export default function AgentDashboard() {
       setLoading(false)
     }
   }
-
+ 
   const handleLogout = () => {
     logout()
     navigate("/login")
   }
-
+ 
   const getArrachesForValise = (valiseId) =>
     arraches.filter(a => a.valiseId === valiseId)
       .sort((a, b) => (a.positionInValise || 0) - (b.positionInValise || 0))
-
+ 
   const totalOk = arraches.filter(a => a.status === "OPERATIONAL").length
   const totalNok = arraches.filter(a => a.status === "DEFECTIVE" || a.status === "NON_CONFORME").length
-
+ 
   // ─── Contrôles tab logic ──────────────────────────────────────
   const selectedValise = valises.find(v => v.id === selectedValiseId)
   const selectedArraches = selectedValiseId ? getArrachesForValise(selectedValiseId) : []
-
-  // Load (or create) the tracking sheet for a valise this quarter
+ 
+  // Load (or create) the tracking sheet for the chosen valise + current quarter
   const loadSheetForValise = async (valise) => {
     setSheetLoading(true)
     setSubmitMessage(null)
     setMonthlyResults({})
     const quarter = getCurrentQuarter()
     const year = getCurrentYear()
-
+ 
     try {
-      const res = await api.get(`/sheets`, { params: { valiseId: valise.id, quarter, year } })
-      let sheet = Array.isArray(res.data) ? res.data[0] : res.data
-
-      // Create sheet if none exists
+      const res = await api.get("/sheets", { params: { valiseId: valise.id, quarter, year } })
+      // Backend now returns the sheet directly or null when not found (200 with body=null)
+      let sheet = res.data
+      if (Array.isArray(sheet)) sheet = sheet[0] || null
+ 
       if (!sheet) {
         const created = await api.post("/sheets", {
           valiseId: valise.id,
@@ -101,18 +102,19 @@ export default function AgentDashboard() {
       setSheetLoading(false)
     }
   }
-
+ 
   const selectValiseForControl = (valiseId) => {
     setSelectedValiseId(valiseId)
     const valise = valises.find(v => v.id === valiseId)
     if (valise) loadSheetForValise(valise)
+    else setCurrentSheet(null)
   }
-
-  // Has this month already been submitted?
+ 
+  // Has this month already been submitted? — uses backend field name `month`
   const monthlyAlreadySubmitted = currentSheet?.monthlyChecks?.some(
-    m => m.monthNumber === getCurrentMonth()
+    m => m.month === getCurrentMonth() && m.year === getCurrentYear()
   )
-
+ 
   const setArracheResult = (arracheId, result) => {
     setMonthlyResults(prev => ({
       ...prev,
@@ -124,25 +126,26 @@ export default function AgentDashboard() {
       }
     }))
   }
-
-  const toggleNokReason = (arracheId, reason) => {
+ 
+  const setNokReason = (arracheId, reason) => {
     setMonthlyResults(prev => ({
       ...prev,
       [arracheId]: {
         ...prev[arracheId],
         nokReasons: {
-          ...prev[arracheId].nokReasons,
-          [reason]: !prev[arracheId].nokReasons[reason]
+          bavure: reason === "bavure",
+          deformation: reason === "deformation",
+          rupture: reason === "rupture"
         }
       }
     }))
   }
-
+ 
   const submitMonthly = async () => {
     if (!currentSheet || !selectedArraches.length) return
     setSubmitMessage(null)
-
-    // Validate: every arrache rated, every NOK has at least one reason
+ 
+    // Validate: every arrache rated, every NOK has a reason picked
     for (const a of selectedArraches) {
       const r = monthlyResults[a.id]
       if (!r || !r.result) {
@@ -152,19 +155,22 @@ export default function AgentDashboard() {
       if (r.result === "NOK") {
         const { bavure, deformation, rupture } = r.nokReasons
         if (!bavure && !deformation && !rupture) {
-          setSubmitMessage({ type: "error", text: `Arrache ${a.positionInValise} : sélectionner au moins une raison NOK.` })
+          setSubmitMessage({ type: "error", text: `Arrache ${a.positionInValise} : sélectionner une raison NOK.` })
           return
         }
       }
     }
-
+ 
     setSubmitting(true)
     try {
+      // Backend MonthlyCheck expects: month (int), year (int), date (LocalDateTime),
+      // inspectorMatricule, signedBy, results[]
       const monthlyCheck = {
-        monthNumber: getCurrentMonth(),
-        date: new Date().toISOString().split("T")[0],
-        inspectorMatricule: user?.matricule,
-        signedBy: user?.fullName,
+        month: getCurrentMonth(),
+        year: getCurrentYear(),
+        date: new Date().toISOString(),
+        inspectorMatricule: user?.matricule || "",
+        signedBy: user?.fullName || "",
         results: selectedArraches.map(a => ({
           arracheId: a.id,
           positionInValise: a.positionInValise,
@@ -172,19 +178,20 @@ export default function AgentDashboard() {
           nokReasons: monthlyResults[a.id].nokReasons
         }))
       }
-
+ 
       const res = await api.post(`/sheets/${currentSheet.id}/monthly`, monthlyCheck)
       setCurrentSheet(res.data)
       setMonthlyResults({})
       setSubmitMessage({ type: "success", text: "Contrôle mensuel soumis avec succès." })
     } catch (err) {
       console.error(err)
-      setSubmitMessage({ type: "error", text: "Erreur lors de la soumission." })
+      const detail = err?.response?.data?.message || err?.response?.statusText || "Erreur lors de la soumission."
+      setSubmitMessage({ type: "error", text: detail })
     } finally {
       setSubmitting(false)
     }
   }
-
+ 
   // ─── Shared styles ──────────────────────────────────────────
   const card = {
     background: "white",
@@ -203,15 +210,15 @@ export default function AgentDashboard() {
     background: "#f8fafc"
   }
   const tdStyle = { padding: "12px 16px", fontSize: "14px", color: "#475569" }
-
+ 
   const tabs = [
     { key: "overview", label: "Vue d'ensemble" },
     { key: "controls", label: "Contrôles" }
   ]
-
+ 
   return (
     <div style={{ minHeight: "100vh", background: "#f0f4f8" }}>
-
+ 
       {/* Navbar */}
       <div style={{
         background: "#1a3a5c",
@@ -253,7 +260,7 @@ export default function AgentDashboard() {
           </button>
         </div>
       </div>
-
+ 
       <div style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
         <h1 style={{ fontSize: "22px", fontWeight: 500, marginBottom: "0.25rem" }}>
           Tableau de bord — QM Opération
@@ -261,7 +268,7 @@ export default function AgentDashboard() {
         <p style={{ color: "#64748b", fontSize: "14px", marginBottom: "1.5rem" }}>
           Bienvenue, {user?.fullName}
         </p>
-
+ 
         {/* Tabs */}
         <div style={{
           display: "flex",
@@ -292,13 +299,10 @@ export default function AgentDashboard() {
             </button>
           ))}
         </div>
-
-        {/* ═══════════════════════════════════════════════ */}
-        {/* OVERVIEW TAB                                    */}
-        {/* ═══════════════════════════════════════════════ */}
+ 
+        {/* ═══════ OVERVIEW TAB ═══════ */}
         {activeTab === "overview" && (
           <>
-            {/* Stat cards */}
             <div style={{
               display: "grid",
               gridTemplateColumns: "repeat(4, 1fr)",
@@ -321,16 +325,12 @@ export default function AgentDashboard() {
                 </div>
               ))}
             </div>
-
-            {/* Valise list */}
+ 
             <div style={{ ...card, overflow: "hidden" }}>
-              <div style={{
-                padding: "1.25rem 1.5rem",
-                borderBottom: "0.5px solid #e2e8f0"
-              }}>
+              <div style={{ padding: "1.25rem 1.5rem", borderBottom: "0.5px solid #e2e8f0" }}>
                 <h2 style={{ fontSize: "16px", fontWeight: 500 }}>Valises</h2>
               </div>
-
+ 
               {loading ? (
                 <div style={{ padding: "2rem", color: "#94a3b8", textAlign: "center" }}>
                   Chargement...
@@ -379,13 +379,10 @@ export default function AgentDashboard() {
             </div>
           </>
         )}
-
-        {/* ═══════════════════════════════════════════════ */}
-        {/* CONTRÔLES TAB                                   */}
-        {/* ═══════════════════════════════════════════════ */}
+ 
+        {/* ═══════ CONTRÔLES TAB ═══════ */}
         {activeTab === "controls" && (
           <>
-            {/* Valise selector */}
             <div style={{ ...card, padding: "1.25rem 1.5rem", marginBottom: "1.5rem" }}>
               <label style={{
                 display: "block",
@@ -415,19 +412,19 @@ export default function AgentDashboard() {
                 ))}
               </select>
             </div>
-
+ 
             {!selectedValiseId && (
               <div style={{ ...card, padding: "2rem", textAlign: "center", color: "#94a3b8" }}>
                 Choisissez une valise pour voir les contrôles hebdomadaires et soumettre le contrôle mensuel.
               </div>
             )}
-
+ 
             {selectedValiseId && sheetLoading && (
               <div style={{ ...card, padding: "2rem", textAlign: "center", color: "#94a3b8" }}>
                 Chargement du suivi...
               </div>
             )}
-
+ 
             {selectedValiseId && !sheetLoading && currentSheet && (
               <>
                 {/* ─── Weekly checks history ─── */}
@@ -446,7 +443,7 @@ export default function AgentDashboard() {
                       {currentSheet.weeklyChecks?.length || 0} semaine{(currentSheet.weeklyChecks?.length || 0) > 1 ? "s" : ""}
                     </span>
                   </div>
-
+ 
                   {!currentSheet.weeklyChecks?.length ? (
                     <div style={{ padding: "1.5rem", color: "#94a3b8", textAlign: "center", fontSize: "14px" }}>
                       Aucun contrôle hebdomadaire soumis ce trimestre.
@@ -522,14 +519,11 @@ export default function AgentDashboard() {
                     </div>
                   )}
                 </div>
-
-                {/* ─── Monthly checks already submitted (display only) ─── */}
+ 
+                {/* ─── Monthly checks already submitted ─── */}
                 {currentSheet.monthlyChecks?.length > 0 && (
                   <div style={{ ...card, overflow: "hidden", marginBottom: "1.5rem" }}>
-                    <div style={{
-                      padding: "1.25rem 1.5rem",
-                      borderBottom: "0.5px solid #e2e8f0"
-                    }}>
+                    <div style={{ padding: "1.25rem 1.5rem", borderBottom: "0.5px solid #e2e8f0" }}>
                       <h2 style={{ fontSize: "16px", fontWeight: 500 }}>
                         Contrôles mensuels — déjà soumis
                       </h2>
@@ -549,7 +543,7 @@ export default function AgentDashboard() {
                             justifyContent: "space-between"
                           }}>
                             <span>
-                              {monthLabels[mc.monthNumber] || `Mois ${mc.monthNumber}`} — {mc.signedBy || mc.inspectorMatricule}
+                              {monthLabels[mc.month] || `Mois ${mc.month}`} {mc.year} — {mc.signedBy || mc.inspectorMatricule}
                               {mc.date && ` · ${new Date(mc.date).toLocaleDateString()}`}
                             </span>
                             <span style={{ color: nokCount > 0 ? "#dc2626" : "#16a34a", fontWeight: 500 }}>
@@ -561,7 +555,7 @@ export default function AgentDashboard() {
                     </div>
                   </div>
                 )}
-
+ 
                 {/* ─── Monthly check form ─── */}
                 <div style={{ ...card, overflow: "hidden" }}>
                   <div style={{
@@ -587,11 +581,10 @@ export default function AgentDashboard() {
                       </span>
                     )}
                   </div>
-
+ 
                   {monthlyAlreadySubmitted ? (
                     <div style={{ padding: "1.5rem", textAlign: "center", color: "#64748b", fontSize: "14px" }}>
                       Le contrôle mensuel pour {monthLabels[getCurrentMonth()]} a déjà été soumis.
-                      Le prochain contrôle sera disponible le mois prochain.
                     </div>
                   ) : selectedArraches.length === 0 ? (
                     <div style={{ padding: "1.5rem", textAlign: "center", color: "#94a3b8", fontSize: "14px" }}>
@@ -602,7 +595,7 @@ export default function AgentDashboard() {
                       <table style={{ width: "100%", borderCollapse: "collapse" }}>
                         <thead>
                           <tr>
-                            {["Pos.", "Description", "Résultat", "Raisons NOK"].map(h => (
+                            {["Pos.", "Description", "Résultat", "Raison NOK"].map(h => (
                               <th key={h} style={thStyle}>{h}</th>
                             ))}
                           </tr>
@@ -669,9 +662,10 @@ export default function AgentDashboard() {
                                           cursor: "pointer"
                                         }}>
                                           <input
-                                            type="checkbox"
+                                            type="radio"
+                                            name={`nok-${a.id}`}
                                             checked={r.nokReasons[opt.key]}
-                                            onChange={() => toggleNokReason(a.id, opt.key)}
+                                            onChange={() => setNokReason(a.id, opt.key)}
                                           />
                                           {opt.label}
                                         </label>
@@ -686,8 +680,7 @@ export default function AgentDashboard() {
                           })}
                         </tbody>
                       </table>
-
-                      {/* Submit area */}
+ 
                       <div style={{
                         padding: "1rem 1.5rem",
                         borderTop: "0.5px solid #e2e8f0",
@@ -697,7 +690,7 @@ export default function AgentDashboard() {
                         alignItems: "center"
                       }}>
                         <div style={{ fontSize: "13px", color: "#64748b" }}>
-                          Inspecteur : <strong>{user?.fullName}</strong> ({user?.matricule})
+                          Inspecteur : <strong>{user?.fullName}</strong> ({user?.matricule || "—"})
                           {" · "}Date : {new Date().toLocaleDateString()}
                         </div>
                         <button
@@ -719,7 +712,7 @@ export default function AgentDashboard() {
                       </div>
                     </>
                   )}
-
+ 
                   {submitMessage && (
                     <div style={{
                       padding: "0.75rem 1.5rem",
@@ -737,7 +730,7 @@ export default function AgentDashboard() {
             )}
           </>
         )}
-
+ 
       </div>
     </div>
   )
