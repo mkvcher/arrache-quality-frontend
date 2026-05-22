@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import api from "../services/api"
 import NotificationBell from "../components/NotificationBell"
+import { NokCriteriaPieChart } from "../components/Charts"
  
 // ─── Helpers ────────────────────────────────────────────
 const getCurrentQuarter = () => Math.floor(new Date().getMonth() / 3) + 1
@@ -22,6 +23,7 @@ export default function AgentDashboard() {
   const [arraches, setArraches] = useState([])
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
+  const [allSheets, setAllSheets] = useState([])
  
   // Contrôles tab state
   const [activeTab, setActiveTab] = useState("overview")
@@ -32,20 +34,22 @@ export default function AgentDashboard() {
   const [submitting, setSubmitting] = useState(false)
   const [submitMessage, setSubmitMessage] = useState(null)
  
-  useEffect(() => {
+useEffect(() => {
     fetchData()
   }, [])
- 
+
   const fetchData = async () => {
     try {
-      const [valiseRes, arracheRes, notifRes] = await Promise.all([
+      const [valiseRes, arracheRes, notifRes, sheetsRes] = await Promise.all([
         api.get("/valises"),
         api.get("/arraches"),
-        api.get("/notifications/role/QM_AGENT")
+        api.get("/notifications/role/QM_AGENT"),
+        api.get("/sheets/current-quarter")
       ])
       setValises(valiseRes.data)
       setArraches(arracheRes.data)
       setNotifications(notifRes.data)
+      setAllSheets(sheetsRes.data)
     } catch (err) {
       console.error(err)
     } finally {
@@ -293,6 +297,9 @@ export default function AgentDashboard() {
         {/* ═══════ OVERVIEW TAB ═══════ */}
         {activeTab === "overview" && (
           <>
+            <div style={{ marginBottom: "1.5rem" }}>
+              <NokCriteriaPieChart sheets={allSheets} />
+            </div>
             <div style={{
               display: "grid",
               gridTemplateColumns: "repeat(4, 1fr)",

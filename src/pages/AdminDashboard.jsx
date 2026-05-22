@@ -3,7 +3,8 @@ import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import api from "../services/api"
 import NotificationBell from "../components/NotificationBell"
- 
+import { RiskDistributionChart, TopRiskArrachesChart, NokByValiseChart } from "../components/Charts"
+
 const inputStyle = {
   width: "100%",
   padding: "8px 12px",
@@ -14,7 +15,7 @@ const inputStyle = {
   background: "white",
   outline: "none"
 }
- 
+
 const labelStyle = {
   display: "block",
   fontSize: "11px",
@@ -24,11 +25,11 @@ const labelStyle = {
   textTransform: "uppercase",
   letterSpacing: "0.04em"
 }
- 
+
 export default function AdminDashboard() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
- 
+
   const [stats, setStats] = useState(null)
   const [users, setUsers] = useState([])
   const [valises, setValises] = useState([])
@@ -36,7 +37,7 @@ export default function AdminDashboard() {
   const [logs, setLogs] = useState([])
   const [activeTab, setActiveTab] = useState("overview")
   const [loading, setLoading] = useState(true)
- 
+
   // ─── User form state ───
   const [showForm, setShowForm] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -50,10 +51,10 @@ export default function AdminDashboard() {
   const [editDraft, setEditDraft] = useState(null)
   const [editError, setEditError] = useState("")
   const [savingEdit, setSavingEdit] = useState(false)
- 
+
   // ─── Valise / Arrache state ───
   const [managingArrachesForId, setManagingArrachesForId] = useState(null)
- 
+
   const [showValiseForm, setShowValiseForm] = useState(false)
   const [creatingValise, setCreatingValise] = useState(false)
   const [valiseError, setValiseError] = useState("")
@@ -64,7 +65,7 @@ export default function AdminDashboard() {
   const [editValiseDraft, setEditValiseDraft] = useState(null)
   const [editValiseError, setEditValiseError] = useState("")
   const [savingValise, setSavingValise] = useState(false)
- 
+
   const [showArracheForm, setShowArracheForm] = useState(false)
   const [creatingArrache, setCreatingArrache] = useState(false)
   const [arracheError, setArracheError] = useState("")
@@ -75,9 +76,9 @@ export default function AdminDashboard() {
   const [editArracheDraft, setEditArracheDraft] = useState(null)
   const [editArracheError, setEditArracheError] = useState("")
   const [savingArrache, setSavingArrache] = useState(false)
- 
+
   useEffect(() => { fetchAll() }, [])
- 
+
   const fetchAll = async () => {
     setLoading(true)
     try {
@@ -99,27 +100,27 @@ export default function AdminDashboard() {
       setLoading(false)
     }
   }
- 
+
   const handleLogout = () => { logout(); navigate("/login") }
- 
+
   // ═══════════════════ User actions ═══════════════════
- 
+
   const handleDeactivate = async (userId) => {
-    if (!window.confirm("Deactivate this user?")) return
+    if (!window.confirm("Désactiver cet utilisateur ?")) return
     try { await api.put(`/admin/users/${userId}/deactivate`); fetchAll() }
     catch (err) { console.error(err) }
   }
- 
+
   const handleActivate = async (userId) => {
     try { await api.put(`/admin/users/${userId}/activate`); fetchAll() }
     catch (err) { console.error(err) }
   }
- 
+
   const handleCreateUser = async () => {
     setCreateError(""); setCreateSuccess(false)
     const { fullName, username, password, matricule, role, valiseId } = newUser
     if (!fullName || !username || !password || !matricule || !role) {
-      setCreateError("All fields are required.")
+      setCreateError("Tous les champs sont requis.")
       return
     }
     setCreating(true)
@@ -132,12 +133,12 @@ export default function AdminDashboard() {
       setShowForm(false)
       fetchAll()
     } catch (err) {
-      setCreateError(err?.response?.data || "Username already exists or server error.")
+      setCreateError(err?.response?.data || "Nom d'utilisateur déjà existant ou erreur serveur.")
     } finally {
       setCreating(false)
     }
   }
- 
+
   const startEdit = (u) => {
     setEditError("")
     setEditingId(u.id)
@@ -160,12 +161,12 @@ export default function AdminDashboard() {
       await api.put(`/admin/users/${editingId}`, body)
       cancelEdit(); fetchAll()
     } catch (err) {
-      setEditError(err?.response?.data || "Update failed.")
+      setEditError(err?.response?.data || "Échec de la mise à jour.")
     } finally { setSavingEdit(false) }
   }
- 
+
   // ═══════════════════ Valise actions ═══════════════════
- 
+
   const handleCreateValise = async () => {
     setValiseError("")
     const { valiseNumber, pf, segment, location } = newValise
@@ -183,7 +184,7 @@ export default function AdminDashboard() {
       setValiseError(err?.response?.data || "Erreur lors de la création.")
     } finally { setCreatingValise(false) }
   }
- 
+
   const startEditValise = (v) => {
     setEditValiseError("")
     setEditingValiseId(v.id)
@@ -208,7 +209,7 @@ export default function AdminDashboard() {
       setEditValiseError(err?.response?.data || "Erreur de mise à jour.")
     } finally { setSavingValise(false) }
   }
- 
+
   const handleDeleteValise = async (v) => {
     const arracheCount = arraches.filter(a => a.valiseId === v.id).length
     const assignedUser = users.find(u => u.valiseId === v.id)
@@ -229,18 +230,18 @@ export default function AdminDashboard() {
       alert(err?.response?.data || "Erreur lors de la suppression.")
     }
   }
- 
+
   // ═══════════════════ Arrache actions ═══════════════════
- 
+
   const arrachesForValise = (valiseId) =>
     arraches.filter(a => a.valiseId === valiseId)
       .sort((a, b) => (a.positionInValise || 0) - (b.positionInValise || 0))
- 
+
   const nextPositionFor = (valiseId) => {
     const used = arrachesForValise(valiseId).map(a => a.positionInValise || 0)
     return used.length === 0 ? 1 : Math.max(...used) + 1
   }
- 
+
   const openArracheManagement = (valiseId) => {
     setManagingArrachesForId(valiseId)
     setShowArracheForm(false)
@@ -250,7 +251,7 @@ export default function AdminDashboard() {
       toolDescription: ""
     })
   }
- 
+
   const handleCreateArrache = async () => {
     setArracheError("")
     const { arracheNumber, positionInValise, toolDescription } = newArrache
@@ -278,7 +279,7 @@ export default function AdminDashboard() {
       setArracheError(err?.response?.data || "Erreur lors de la création.")
     } finally { setCreatingArrache(false) }
   }
- 
+
   const startEditArrache = (a) => {
     setEditArracheError("")
     setEditingArracheId(a.id)
@@ -305,7 +306,7 @@ export default function AdminDashboard() {
       setEditArracheError(err?.response?.data || "Erreur de mise à jour.")
     } finally { setSavingArrache(false) }
   }
- 
+
   const handleDeleteArrache = async (a) => {
     if (!window.confirm(`Supprimer l'arrache ${a.arracheNumber} (position ${a.positionInValise}) ?`)) return
     try {
@@ -315,9 +316,9 @@ export default function AdminDashboard() {
       alert(err?.response?.data || "Erreur lors de la suppression.")
     }
   }
- 
+
   // ═══════════════════ Helpers / styles ═══════════════════
- 
+
   const availableValisesForCreate = valises.filter(v =>
     !users.some(u => u.valiseId === v.id && u.active)
   )
@@ -334,10 +335,18 @@ export default function AdminDashboard() {
     const u = users.find(x => x.valiseId === valiseId && x.active)
     return u ? u.fullName : null
   }
- 
-  const getRiskColor = (s) => s > 80 ? "#dc2626" : s > 60 ? "#d97706" : s > 40 ? "#ca8a04" : "#16a34a"
-  const getRiskLabel = (s) => s > 80 ? "Critical" : s > 60 ? "High" : s > 40 ? "Medium" : "Low"
- 
+
+  const getRiskColor = (s, status) => {
+    if (status === "NON_CONFORME") return "#dc2626"
+    if (status === "DEFECTIVE")    return "#d97706"
+    return s > 80 ? "#dc2626" : s > 60 ? "#d97706" : s > 40 ? "#ca8a04" : "#16a34a"
+  }
+  const getRiskLabel = (s, status) => {
+    if (status === "NON_CONFORME") return "Critique"
+    if (status === "DEFECTIVE")    return "Élevé"
+    return s > 80 ? "Critique" : s > 60 ? "Élevé" : s > 40 ? "Moyen" : "Faible"
+  }
+
   const roleBadge = (role) => {
     const map = {
       ADMIN:      { bg: "#fef9c3", color: "#854d0e" },
@@ -353,7 +362,7 @@ export default function AdminDashboard() {
       }}>{role}</span>
     )
   }
- 
+
   const arracheStatusBadge = (status) => {
     const map = {
       OPERATIONAL:  { bg: "#dcfce7", color: "#16a34a" },
@@ -368,31 +377,30 @@ export default function AdminDashboard() {
       }}>{status}</span>
     )
   }
- 
+
   const tabs = [
-    { key: "overview", label: "Overview" },
-    { key: "users",    label: `Users (${users.length})` },
-    { key: "valises",  label: `Valises (${valises.length})` },
-    { key: "ratings",  label: "Risk Ratings" },
-    { key: "logs",     label: "Activity Log" }
+    { key: "overview",  label: "Vue d'ensemble" },
+    { key: "users",     label: `Utilisateurs (${users.length})` },
+    { key: "valises",   label: `Valises (${valises.length})` },
+    { key: "analytics", label: "Analyses" },
+    { key: "ratings",   label: "Scores de risque" },
+    { key: "logs",      label: "Journal d'activité" }
   ]
- 
+
   const thStyle = {
     padding: "10px 16px", textAlign: "left", fontSize: "11px", fontWeight: 500,
     color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em",
     borderBottom: "0.5px solid #e2e8f0", background: "#f8fafc"
   }
   const tdStyle = { padding: "12px 16px", fontSize: "13px", color: "#475569", borderBottom: "0.5px solid #f1f5f9" }
- 
-  // ═══════════════════ Render helpers ═══════════════════
- 
+
   const focusedValise = managingArrachesForId
     ? valises.find(v => v.id === managingArrachesForId)
     : null
- 
+
   return (
     <div style={{ minHeight: "100vh", background: "#f0f4f8" }}>
- 
+
       {/* Navbar */}
       <div style={{
         background: "#1a3a5c", padding: "0 2rem", height: "60px",
@@ -411,16 +419,16 @@ export default function AdminDashboard() {
           <button onClick={handleLogout} style={{
             background: "rgba(255,255,255,0.15)", color: "white", border: "none",
             padding: "6px 14px", borderRadius: "6px", fontSize: "13px", cursor: "pointer"
-          }}>Logout</button>
+          }}>Déconnexion</button>
         </div>
       </div>
- 
+
       <div style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
-        <h1 style={{ fontSize: "22px", fontWeight: 500, marginBottom: "0.25rem" }}>Admin Dashboard</h1>
+        <h1 style={{ fontSize: "22px", fontWeight: 500, marginBottom: "0.25rem" }}>Tableau de bord — Administration</h1>
         <p style={{ color: "#64748b", fontSize: "14px", marginBottom: "2rem" }}>
-          Full system overview — {user?.fullName}
+          Vue système globale — {user?.fullName}
         </p>
- 
+
         {/* Tabs */}
         <div style={{
           display: "flex", gap: "4px", marginBottom: "1.5rem",
@@ -436,16 +444,16 @@ export default function AdminDashboard() {
             }}>{t.label}</button>
           ))}
         </div>
- 
-        {/* ═══════════ OVERVIEW ═══════════ */}
+
+        {/* ═══════════ VUE D'ENSEMBLE ═══════════ */}
         {activeTab === "overview" && (
           <div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "1rem", marginBottom: "1.5rem" }}>
               {[
-                { label: "Total Users",     value: stats?.totalUsers,    color: "#1a3a5c" },
-                { label: "Total Arraches",  value: stats?.totalArraches, color: "#0369a1" },
-                { label: "Non-Conformes",   value: stats?.nonConforme,   color: "#dc2626" },
-                { label: "High Risk (>60)", value: stats?.highRisk,      color: "#d97706" }
+                { label: "Utilisateurs",        value: stats?.totalUsers,    color: "#1a3a5c" },
+                { label: "Arraches",            value: stats?.totalArraches, color: "#0369a1" },
+                { label: "Non-conformes",       value: stats?.nonConforme,   color: "#dc2626" },
+                { label: "Risque élevé (>60)",  value: stats?.highRisk,      color: "#d97706" }
               ].map(c => (
                 <div key={c.label} style={{
                   background: "white", borderRadius: "12px",
@@ -459,12 +467,12 @@ export default function AdminDashboard() {
               ))}
             </div>
             <div style={{ background: "white", borderRadius: "12px", border: "0.5px solid #e2e8f0", padding: "1.5rem" }}>
-              <h2 style={{ fontSize: "16px", fontWeight: 500, marginBottom: "1rem" }}>Arrache Status Breakdown</h2>
+              <h2 style={{ fontSize: "16px", fontWeight: 500, marginBottom: "1rem" }}>Répartition des statuts</h2>
               <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
                 {[
-                  { label: "Operational",  value: stats?.operational, color: "#16a34a", bg: "#dcfce7" },
-                  { label: "Defective",    value: stats?.defective,   color: "#d97706", bg: "#fef9c3" },
-                  { label: "Non-Conforme", value: stats?.nonConforme, color: "#dc2626", bg: "#fef2f2" }
+                  { label: "Opérationnels",  value: stats?.operational, color: "#16a34a", bg: "#dcfce7" },
+                  { label: "Défectueux",     value: stats?.defective,   color: "#d97706", bg: "#fef9c3" },
+                  { label: "Non conformes",  value: stats?.nonConforme, color: "#dc2626", bg: "#fef2f2" }
                 ].map(item => (
                   <div key={item.label} style={{
                     display: "flex", alignItems: "center", gap: "10px",
@@ -480,73 +488,73 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
- 
-        {/* ═══════════ USERS ═══════════ */}
+
+        {/* ═══════════ UTILISATEURS ═══════════ */}
         {activeTab === "users" && (
           <div style={{ background: "white", borderRadius: "12px", border: "0.5px solid #e2e8f0", overflow: "hidden" }}>
- 
+
             <div style={{
               padding: "1.25rem 1.5rem", borderBottom: "0.5px solid #e2e8f0",
               display: "flex", justifyContent: "space-between", alignItems: "center"
             }}>
-              <h2 style={{ fontSize: "16px", fontWeight: 500 }}>All Users</h2>
+              <h2 style={{ fontSize: "16px", fontWeight: 500 }}>Tous les utilisateurs</h2>
               <button onClick={() => { setShowForm(!showForm); setCreateError(""); setCreateSuccess(false) }} style={{
                 background: showForm ? "#f1f5f9" : "#1a3a5c",
                 color: showForm ? "#475569" : "white",
                 border: "0.5px solid #e2e8f0", padding: "7px 16px",
                 borderRadius: "8px", fontSize: "13px", fontWeight: 500, cursor: "pointer"
               }}>
-                {showForm ? "✕ Cancel" : "+ New User"}
+                {showForm ? "✕ Annuler" : "+ Nouvel utilisateur"}
               </button>
             </div>
- 
+
             {showForm && (
               <div style={{ padding: "1.5rem", borderBottom: "0.5px solid #e2e8f0", background: "#f8fafc" }}>
                 <h3 style={{ fontSize: "14px", fontWeight: 500, marginBottom: "1rem", color: "#1a3a5c" }}>
-                  Create New User
+                  Créer un nouvel utilisateur
                 </h3>
- 
+
                 {createError && (
                   <div style={{
                     background: "#fef2f2", color: "#dc2626", border: "0.5px solid #fecaca",
                     padding: "10px 14px", borderRadius: "8px", marginBottom: "1rem", fontSize: "13px"
                   }}>{String(createError)}</div>
                 )}
- 
+
                 {createSuccess && (
                   <div style={{
                     background: "#dcfce7", color: "#16a34a", border: "0.5px solid #bbf7d0",
                     padding: "10px 14px", borderRadius: "8px", marginBottom: "1rem", fontSize: "13px"
-                  }}>✓ User created successfully</div>
+                  }}>✓ Utilisateur créé avec succès</div>
                 )}
- 
+
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
                   <div>
-                    <label style={labelStyle}>Full Name</label>
-                    <input style={inputStyle} type="text" placeholder="e.g. Mohamed Ben Ali"
+                    <label style={labelStyle}>Nom complet</label>
+                    <input style={inputStyle} type="text" placeholder="ex. Mohamed Ben Ali"
                       value={newUser.fullName}
                       onChange={e => setNewUser(p => ({ ...p, fullName: e.target.value }))} />
                   </div>
                   <div>
-                    <label style={labelStyle}>Username</label>
-                    <input style={inputStyle} type="text" placeholder="e.g. mbali"
+                    <label style={labelStyle}>Nom d'utilisateur</label>
+                    <input style={inputStyle} type="text" placeholder="ex. mbali"
                       value={newUser.username}
                       onChange={e => setNewUser(p => ({ ...p, username: e.target.value }))} />
                   </div>
                   <div>
-                    <label style={labelStyle}>Password</label>
-                    <input style={inputStyle} type="password" placeholder="Min. 6 characters"
+                    <label style={labelStyle}>Mot de passe</label>
+                    <input style={inputStyle} type="password" placeholder="Min. 6 caractères"
                       value={newUser.password}
                       onChange={e => setNewUser(p => ({ ...p, password: e.target.value }))} />
                   </div>
                   <div>
                     <label style={labelStyle}>Matricule</label>
-                    <input style={inputStyle} type="text" placeholder="e.g. R-042"
+                    <input style={inputStyle} type="text" placeholder="ex. R-042"
                       value={newUser.matricule}
                       onChange={e => setNewUser(p => ({ ...p, matricule: e.target.value }))} />
                   </div>
                   <div>
-                    <label style={labelStyle}>Role</label>
+                    <label style={labelStyle}>Rôle</label>
                     <select style={inputStyle} value={newUser.role}
                       onChange={e => setNewUser(p => ({ ...p, role: e.target.value, valiseId: "" }))}>
                       <option value="REPARATEUR">REPARATEUR</option>
@@ -560,7 +568,7 @@ export default function AdminDashboard() {
                       <label style={labelStyle}>Valise assignée</label>
                       <select style={inputStyle} value={newUser.valiseId}
                         onChange={e => setNewUser(p => ({ ...p, valiseId: e.target.value }))}>
-                        <option value="">— None (assign later) —</option>
+                        <option value="">— Aucune (assigner plus tard) —</option>
                         {availableValisesForCreate.map(v => (
                           <option key={v.id} value={v.id}>
                             {v.valiseNumber} — {v.pf} / {v.segment}
@@ -575,21 +583,21 @@ export default function AdminDashboard() {
                     </div>
                   )}
                 </div>
- 
+
                 <button onClick={handleCreateUser} disabled={creating} style={{
                   background: creating ? "#94a3b8" : "#16a34a", color: "white",
                   border: "none", padding: "9px 24px", borderRadius: "8px",
                   fontSize: "14px", fontWeight: 500, cursor: creating ? "not-allowed" : "pointer"
                 }}>
-                  {creating ? "Creating..." : "Create User"}
+                  {creating ? "Création..." : "Créer l'utilisateur"}
                 </button>
               </div>
             )}
- 
+
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
-                  {["Full Name", "Username", "Role", "Matricule", "Valise", "Status", "Action"].map(h => (
+                  {["Nom complet", "Identifiant", "Rôle", "Matricule", "Valise", "Statut", "Action"].map(h => (
                     <th key={h} style={thStyle}>{h}</th>
                   ))}
                 </tr>
@@ -629,7 +637,7 @@ export default function AdminDashboard() {
                             <select style={{ ...inputStyle, padding: "5px 8px" }}
                               value={editDraft.valiseId}
                               onChange={e => setEditDraft(d => ({ ...d, valiseId: e.target.value }))}>
-                              <option value="">— None —</option>
+                              <option value="">— Aucune —</option>
                               {availableValisesForEdit(editDraft.valiseId).map(v => {
                                 const taken = valiseAssignedTo(v.id)
                                 const takenByOther = taken && v.id !== u.valiseId
@@ -648,7 +656,7 @@ export default function AdminDashboard() {
                             fontSize: "11px", fontWeight: 500,
                             background: u.active ? "#dcfce7" : "#fef2f2",
                             color: u.active ? "#16a34a" : "#dc2626"
-                          }}>{u.active ? "Active" : "Inactive"}</span>
+                          }}>{u.active ? "Actif" : "Inactif"}</span>
                         </td>
                         <td style={tdStyle}>
                           <div style={{ display: "flex", gap: "6px" }}>
@@ -656,11 +664,11 @@ export default function AdminDashboard() {
                               background: "#16a34a", color: "white", border: "none",
                               padding: "4px 10px", borderRadius: "6px", fontSize: "12px",
                               cursor: savingEdit ? "not-allowed" : "pointer", fontWeight: 500
-                            }}>{savingEdit ? "..." : "Save"}</button>
+                            }}>{savingEdit ? "..." : "Enregistrer"}</button>
                             <button onClick={cancelEdit} style={{
                               background: "#f1f5f9", color: "#475569", border: "0.5px solid #e2e8f0",
                               padding: "4px 10px", borderRadius: "6px", fontSize: "12px", cursor: "pointer"
-                            }}>Cancel</button>
+                            }}>Annuler</button>
                           </div>
                           {editError && (
                             <div style={{ color: "#dc2626", fontSize: "11px", marginTop: "4px" }}>
@@ -690,7 +698,7 @@ export default function AdminDashboard() {
                           fontSize: "11px", fontWeight: 500,
                           background: u.active ? "#dcfce7" : "#fef2f2",
                           color: u.active ? "#16a34a" : "#dc2626"
-                        }}>{u.active ? "Active" : "Inactive"}</span>
+                        }}>{u.active ? "Actif" : "Inactif"}</span>
                       </td>
                       <td style={tdStyle}>
                         <div style={{ display: "flex", gap: "6px" }}>
@@ -698,19 +706,19 @@ export default function AdminDashboard() {
                             <button onClick={() => startEdit(u)} style={{
                               background: "#dbeafe", color: "#1e40af", border: "0.5px solid #bfdbfe",
                               padding: "4px 10px", borderRadius: "6px", fontSize: "12px", cursor: "pointer"
-                            }}>Edit</button>
+                            }}>Modifier</button>
                           )}
                           {u.role !== "ADMIN" && u.active && (
                             <button onClick={() => handleDeactivate(u.id)} style={{
                               background: "#fef2f2", color: "#dc2626", border: "0.5px solid #fecaca",
                               padding: "4px 10px", borderRadius: "6px", fontSize: "12px", cursor: "pointer"
-                            }}>Deactivate</button>
+                            }}>Désactiver</button>
                           )}
                           {u.role !== "ADMIN" && !u.active && (
                             <button onClick={() => handleActivate(u.id)} style={{
                               background: "#dcfce7", color: "#16a34a", border: "0.5px solid #bbf7d0",
                               padding: "4px 10px", borderRadius: "6px", fontSize: "12px", cursor: "pointer"
-                            }}>Reactivate</button>
+                            }}>Réactiver</button>
                           )}
                         </div>
                       </td>
@@ -721,11 +729,11 @@ export default function AdminDashboard() {
             </table>
           </div>
         )}
- 
+
         {/* ═══════════ VALISES ═══════════ */}
         {activeTab === "valises" && !managingArrachesForId && (
           <div style={{ background: "white", borderRadius: "12px", border: "0.5px solid #e2e8f0", overflow: "hidden" }}>
- 
+
             <div style={{
               padding: "1.25rem 1.5rem", borderBottom: "0.5px solid #e2e8f0",
               display: "flex", justifyContent: "space-between", alignItems: "center"
@@ -740,20 +748,20 @@ export default function AdminDashboard() {
                 {showValiseForm ? "✕ Annuler" : "+ Nouvelle valise"}
               </button>
             </div>
- 
+
             {showValiseForm && (
               <div style={{ padding: "1.5rem", borderBottom: "0.5px solid #e2e8f0", background: "#f8fafc" }}>
                 <h3 style={{ fontSize: "14px", fontWeight: 500, marginBottom: "1rem", color: "#1a3a5c" }}>
                   Créer une nouvelle valise
                 </h3>
- 
+
                 {valiseError && (
                   <div style={{
                     background: "#fef2f2", color: "#dc2626", border: "0.5px solid #fecaca",
                     padding: "10px 14px", borderRadius: "8px", marginBottom: "1rem", fontSize: "13px"
                   }}>{String(valiseError)}</div>
                 )}
- 
+
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
                   <div>
                     <label style={labelStyle}>N° Valise</label>
@@ -780,7 +788,7 @@ export default function AdminDashboard() {
                       onChange={e => setNewValise(p => ({ ...p, location: e.target.value }))} />
                   </div>
                 </div>
- 
+
                 <button onClick={handleCreateValise} disabled={creatingValise} style={{
                   background: creatingValise ? "#94a3b8" : "#16a34a", color: "white",
                   border: "none", padding: "9px 24px", borderRadius: "8px",
@@ -790,7 +798,7 @@ export default function AdminDashboard() {
                 </button>
               </div>
             )}
- 
+
             {valises.length === 0 ? (
               <div style={{ padding: "2rem", color: "#94a3b8", textAlign: "center" }}>
                 Aucune valise. Créez-en une pour commencer.
@@ -848,11 +856,11 @@ export default function AdminDashboard() {
                                 background: "#16a34a", color: "white", border: "none",
                                 padding: "4px 10px", borderRadius: "6px", fontSize: "12px",
                                 cursor: savingValise ? "not-allowed" : "pointer", fontWeight: 500
-                              }}>{savingValise ? "..." : "Save"}</button>
+                              }}>{savingValise ? "..." : "Enregistrer"}</button>
                               <button onClick={cancelEditValise} style={{
                                 background: "#f1f5f9", color: "#475569", border: "0.5px solid #e2e8f0",
                                 padding: "4px 10px", borderRadius: "6px", fontSize: "12px", cursor: "pointer"
-                              }}>Cancel</button>
+                              }}>Annuler</button>
                             </div>
                             {editValiseError && (
                               <div style={{ color: "#dc2626", fontSize: "11px", marginTop: "4px" }}>
@@ -888,11 +896,11 @@ export default function AdminDashboard() {
                             <button onClick={() => startEditValise(v)} style={{
                               background: "#dbeafe", color: "#1e40af", border: "0.5px solid #bfdbfe",
                               padding: "4px 10px", borderRadius: "6px", fontSize: "12px", cursor: "pointer"
-                            }}>Edit</button>
+                            }}>Modifier</button>
                             <button onClick={() => handleDeleteValise(v)} style={{
                               background: "#fef2f2", color: "#dc2626", border: "0.5px solid #fecaca",
                               padding: "4px 10px", borderRadius: "6px", fontSize: "12px", cursor: "pointer"
-                            }}>Delete</button>
+                            }}>Supprimer</button>
                           </div>
                         </td>
                       </tr>
@@ -903,7 +911,7 @@ export default function AdminDashboard() {
             )}
           </div>
         )}
- 
+
         {/* ═══════════ VALISE → ARRACHES management ═══════════ */}
         {activeTab === "valises" && managingArrachesForId && focusedValise && (
           <div>
@@ -918,7 +926,7 @@ export default function AdminDashboard() {
             >
               ← Retour aux valises
             </button>
- 
+
             <div style={{ background: "white", borderRadius: "12px", border: "0.5px solid #e2e8f0", overflow: "hidden" }}>
               <div style={{
                 padding: "1.25rem 1.5rem", borderBottom: "0.5px solid #e2e8f0",
@@ -947,7 +955,7 @@ export default function AdminDashboard() {
                   {showArracheForm ? "✕ Annuler" : "+ Nouvel arrache"}
                 </button>
               </div>
- 
+
               {showArracheForm && (
                 <div style={{ padding: "1.5rem", borderBottom: "0.5px solid #e2e8f0", background: "#f8fafc" }}>
                   {arracheError && (
@@ -976,7 +984,7 @@ export default function AdminDashboard() {
                         onChange={e => setNewArrache(p => ({ ...p, toolDescription: e.target.value }))} />
                     </div>
                   </div>
- 
+
                   <button onClick={handleCreateArrache} disabled={creatingArrache} style={{
                     background: creatingArrache ? "#94a3b8" : "#16a34a", color: "white",
                     border: "none", padding: "9px 24px", borderRadius: "8px",
@@ -986,7 +994,7 @@ export default function AdminDashboard() {
                   </button>
                 </div>
               )}
- 
+
               {arrachesForValise(managingArrachesForId).length === 0 ? (
                 <div style={{ padding: "2rem", color: "#94a3b8", textAlign: "center" }}>
                   Aucun arrache dans cette valise. Ajoutez-en un pour commencer.
@@ -995,7 +1003,7 @@ export default function AdminDashboard() {
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
-                      {["Pos.", "N° Arrache", "Description", "Statut", "NOK total", "Risk", "Actions"].map(h => (
+                      {["Pos.", "N° Arrache", "Description", "Statut", "NOK total", "Risque", "Actions"].map(h => (
                         <th key={h} style={thStyle}>{h}</th>
                       ))}
                     </tr>
@@ -1031,11 +1039,11 @@ export default function AdminDashboard() {
                                   background: "#16a34a", color: "white", border: "none",
                                   padding: "4px 10px", borderRadius: "6px", fontSize: "12px",
                                   cursor: savingArrache ? "not-allowed" : "pointer", fontWeight: 500
-                                }}>{savingArrache ? "..." : "Save"}</button>
+                                }}>{savingArrache ? "..." : "Enregistrer"}</button>
                                 <button onClick={cancelEditArrache} style={{
                                   background: "#f1f5f9", color: "#475569", border: "0.5px solid #e2e8f0",
                                   padding: "4px 10px", borderRadius: "6px", fontSize: "12px", cursor: "pointer"
-                                }}>Cancel</button>
+                                }}>Annuler</button>
                               </div>
                               {editArracheError && (
                                 <div style={{ color: "#dc2626", fontSize: "11px", marginTop: "4px" }}>
@@ -1054,7 +1062,7 @@ export default function AdminDashboard() {
                           <td style={tdStyle}>{arracheStatusBadge(a.status)}</td>
                           <td style={tdStyle}>{a.totalNokCount || 0}</td>
                           <td style={tdStyle}>
-                            <span style={{ color: getRiskColor(a.riskScore || 0), fontWeight: 500 }}>
+                            <span style={{ color: getRiskColor(a.riskScore || 0, a.status), fontWeight: 500 }}>
                               {Math.round(a.riskScore || 0)}
                             </span>
                           </td>
@@ -1063,11 +1071,11 @@ export default function AdminDashboard() {
                               <button onClick={() => startEditArrache(a)} style={{
                                 background: "#dbeafe", color: "#1e40af", border: "0.5px solid #bfdbfe",
                                 padding: "4px 10px", borderRadius: "6px", fontSize: "12px", cursor: "pointer"
-                              }}>Edit</button>
+                              }}>Modifier</button>
                               <button onClick={() => handleDeleteArrache(a)} style={{
                                 background: "#fef2f2", color: "#dc2626", border: "0.5px solid #fecaca",
                                 padding: "4px 10px", borderRadius: "6px", fontSize: "12px", cursor: "pointer"
-                              }}>Delete</button>
+                              }}>Supprimer</button>
                             </div>
                           </td>
                         </tr>
@@ -1079,17 +1087,28 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
- 
-        {/* ═══════════ RISK RATINGS ═══════════ */}
+
+        {/* ═══════════ ANALYSES ═══════════ */}
+        {activeTab === "analytics" && (
+          <div style={{ display: "grid", gap: "1rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+              <RiskDistributionChart arraches={arraches} />
+              <TopRiskArrachesChart arraches={arraches} />
+            </div>
+            <NokByValiseChart sheets={logs} valises={valises} />
+          </div>
+        )}
+
+        {/* ═══════════ SCORES DE RISQUE ═══════════ */}
         {activeTab === "ratings" && (
           <div style={{ background: "white", borderRadius: "12px", border: "0.5px solid #e2e8f0", overflow: "hidden" }}>
             <div style={{ padding: "1.25rem 1.5rem", borderBottom: "0.5px solid #e2e8f0" }}>
-              <h2 style={{ fontSize: "16px", fontWeight: 500 }}>Arrache Risk Ratings — sorted by score</h2>
+              <h2 style={{ fontSize: "16px", fontWeight: 500 }}>Scores de risque des arraches — triés par score</h2>
             </div>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
-                  {["Arrache", "Description", "Status", "NOK Count", "Rupture", "Risk Score", "Level"].map(h => (
+                  {["Arrache", "Description", "Statut", "Nb NOK", "Rupture", "Score", "Niveau"].map(h => (
                     <th key={h} style={thStyle}>{h}</th>
                   ))}
                 </tr>
@@ -1103,15 +1122,15 @@ export default function AdminDashboard() {
                     <td style={tdStyle}>{a.totalNokCount}</td>
                     <td style={tdStyle}>
                       {a.ruptureEverSeen
-                        ? <span style={{ color: "#dc2626", fontWeight: 500 }}>Yes</span>
-                        : <span style={{ color: "#94a3b8" }}>No</span>}
+                        ? <span style={{ color: "#dc2626", fontWeight: 500 }}>Oui</span>
+                        : <span style={{ color: "#94a3b8" }}>Non</span>}
                     </td>
                     <td style={tdStyle}>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         <div style={{ width: "80px", height: "6px", background: "#f1f5f9", borderRadius: "3px", overflow: "hidden" }}>
-                          <div style={{ width: `${a.riskScore}%`, height: "100%", background: getRiskColor(a.riskScore), borderRadius: "3px" }} />
+                          <div style={{ width: `${a.riskScore}%`, height: "100%", background: getRiskColor(a.riskScore, a.status), borderRadius: "3px" }} />
                         </div>
-                        <span style={{ fontSize: "13px", fontWeight: 500, color: getRiskColor(a.riskScore) }}>
+                        <span style={{ fontSize: "13px", fontWeight: 500, color: getRiskColor(a.riskScore, a.status) }}>
                           {Math.round(a.riskScore)}
                         </span>
                       </div>
@@ -1120,9 +1139,9 @@ export default function AdminDashboard() {
                       <span style={{
                         display: "inline-block", padding: "3px 10px", borderRadius: "20px",
                         fontSize: "11px", fontWeight: 500,
-                        background: getRiskColor(a.riskScore) + "22",
-                        color: getRiskColor(a.riskScore)
-                      }}>{getRiskLabel(a.riskScore)}</span>
+                        background: getRiskColor(a.riskScore, a.status) + "22",
+                        color: getRiskColor(a.riskScore, a.status)
+                      }}>{getRiskLabel(a.riskScore, a.status)}</span>
                     </td>
                   </tr>
                 ))}
@@ -1130,17 +1149,17 @@ export default function AdminDashboard() {
             </table>
           </div>
         )}
- 
-        {/* ═══════════ ACTIVITY LOG ═══════════ */}
+
+        {/* ═══════════ JOURNAL D'ACTIVITÉ ═══════════ */}
         {activeTab === "logs" && (
           <div style={{ background: "white", borderRadius: "12px", border: "0.5px solid #e2e8f0", overflow: "hidden" }}>
             <div style={{ padding: "1.25rem 1.5rem", borderBottom: "0.5px solid #e2e8f0" }}>
-              <h2 style={{ fontSize: "16px", fontWeight: 500 }}>Activity Log — All Tracking Sheets ({logs.length})</h2>
+              <h2 style={{ fontSize: "16px", fontWeight: 500 }}>Journal d'activité — tous les suivis ({logs.length})</h2>
             </div>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
-                  {["Valise", "PF", "Quarter", "Weekly Checks", "Monthly Checks", "Lab Verdict", "Created"].map(h => (
+                  {["Valise", "PF", "Trimestre", "Contrôles hebdo.", "Contrôles mensuels", "Verdict Labo", "Créé le"].map(h => (
                     <th key={h} style={thStyle}>{h}</th>
                   ))}
                 </tr>
@@ -1150,7 +1169,7 @@ export default function AdminDashboard() {
                   <tr key={log.id}>
                     <td style={{ ...tdStyle, fontWeight: 500, color: "#1e293b" }}>{log.valiseNumber}</td>
                     <td style={tdStyle}>{log.pf}</td>
-                    <td style={tdStyle}>Q{log.quarter} {log.year}</td>
+                    <td style={tdStyle}>T{log.quarter} {log.year}</td>
                     <td style={tdStyle}>{log.weeklyChecks?.length || 0}</td>
                     <td style={tdStyle}>{log.monthlyChecks?.length || 0}</td>
                     <td style={tdStyle}>
@@ -1159,7 +1178,7 @@ export default function AdminDashboard() {
                         fontSize: "11px", fontWeight: 500,
                         background: log.quarterlyVerdict ? "#dcfce7" : "#f1f5f9",
                         color: log.quarterlyVerdict ? "#16a34a" : "#94a3b8"
-                      }}>{log.quarterlyVerdict ? "Submitted" : "Pending"}</span>
+                      }}>{log.quarterlyVerdict ? "Soumis" : "En attente"}</span>
                     </td>
                     <td style={tdStyle}>{new Date(log.createdAt).toLocaleDateString()}</td>
                   </tr>
@@ -1168,7 +1187,7 @@ export default function AdminDashboard() {
             </table>
           </div>
         )}
- 
+
       </div>
     </div>
   )

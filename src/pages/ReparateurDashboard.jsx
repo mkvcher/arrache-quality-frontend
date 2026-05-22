@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import api from "../services/api"
 import NotificationBell from "../components/NotificationBell"
+import { MyValiseSparkline } from "../components/Charts"
 
 const getCurrentQuarter = () => Math.floor(new Date().getMonth() / 3) + 1
 const getCurrentYear = () => new Date().getFullYear()
@@ -260,6 +261,9 @@ export default function ReparateurDashboard() {
         {/* ─── Main inspection view ─── */}
         {!loading && assignedValise && (
           <>
+            <div style={{ marginBottom: "1.5rem" }}>
+              <MyValiseSparkline sheet={currentSheet} />
+            </div>
             {/* Valise header card */}
             <div style={{ ...card, padding: "1.25rem 1.5rem", marginBottom: "1.5rem" }}>
               <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "4px" }}>

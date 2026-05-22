@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import api from "../services/api"
 import NotificationBell from "../components/NotificationBell"
+import { NokTrendChart } from "../components/Charts"
 
 // ─── Helpers ────────────────────────────────────────────
 const getCurrentQuarter = () => Math.floor(new Date().getMonth() / 3) + 1
@@ -329,6 +330,9 @@ export default function LaboratoryDashboard() {
         {/* ═══════ OVERVIEW TAB ═══════ */}
         {activeTab === "overview" && (
           <>
+            <div style={{ marginBottom: "1.5rem" }}>
+              <NokTrendChart sheets={allSheets} />
+            </div>
             <div style={{
               display: "grid",
               gridTemplateColumns: "repeat(4, 1fr)",

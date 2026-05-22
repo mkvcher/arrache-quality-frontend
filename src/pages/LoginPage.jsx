@@ -105,7 +105,7 @@ export default function LoginPage() {
                   textTransform: "uppercase",
                   letterSpacing: "0.05em"
                 }}>
-                  Matricule / Username
+                  Matricule
                 </label>
                 <input
                   type="text"
